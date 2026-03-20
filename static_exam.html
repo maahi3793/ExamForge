@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExamForge — Offline Assessment</title>
+    <style>
+/* ============================================================
+   ExamForge — Enterprise Assessment UI (Strict/Minimalist)
+   High-contrast, zero-radius, typography focused.
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --bg-primary: #f9fafb;     /* Very light gray background */
+    --bg-secondary: #ffffff;   /* Pure white */
+    --bg-card: #ffffff;
+    --bg-card-hover: #f3f4f6;
+    --bg-input: #ffffff;
+    
+    --border: #d1d5db;         /* Sharp gray border */
+    --border-focus: #111827;   /* Black focus ring */
+
+    --text-primary: #111827;   /* Near black */
+    --text-secondary: #4b5563; /* Slate gray */
+    --text-muted: #6b7280;
+
+    --accent: #111827;         /* Strict Black */
+    --accent-hover: #374151;
+    
+    --success: #059669;
+    --danger: #dc2626;
+    --warning: #d97706;
+    --info: #2563eb;
+
+    --radius: 0px;
+    --shadow: 4px 4px 0px rgba(17, 24, 39, 0.1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+    content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px; opacity: 0.15; pointer-events: none; z-index: 0;
+}
+
+.container { max-width: 1000px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px 24px; border-radius: var(--radius); font-family: 'Inter', sans-serif;
+    font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+    text-decoration: none; border: 2px solid var(--accent); cursor: pointer; transition: all 0.2s ease;
+}
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-success { background: var(--success); border-color: var(--success); color: white; }
+.btn-lg { padding: 16px 36px; font-size: 15px; }
+
+.card { background: var(--bg-card); border: 2px solid var(--border); padding: 32px; transition: all 0.2s ease; }
+.form-group { margin-bottom: 28px; }
+.form-label { display: block; font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.form-input { width: 100%; padding: 14px 16px; background: var(--bg-input); border: 2px solid var(--border); color: var(--text-primary); font-family: 'Inter', sans-serif; font-size: 15px; transition: all 0.2s ease; }
+.form-input:focus { outline: none; border-color: var(--border-focus); box-shadow: 4px 4px 0px rgba(17, 24, 39, 0.1); }
+
+.login-card { max-width: 480px; margin: 80px auto; text-align: left; border-top: 6px solid var(--text-primary); }
+.login-card h2 { font-size: 24px; font-weight: 800; text-transform: uppercase; margin-bottom: 12px; }
+.strict-mode-banner { padding: 16px; background: #fffbeb; border: 1px solid #f59e0b; color: #92400e; font-size: 14px; margin-bottom: 24px; }
+
+.question-card { background: var(--bg-card); border: 2px solid var(--border); padding: 32px; margin-bottom: 24px; }
+.question-card .q-number { display: inline-block; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1.5px; border: 1px solid var(--border); padding: 4px 8px; margin-bottom: 16px; }
+.question-card .q-text { font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 24px; line-height: 1.6; white-space: pre-wrap; padding-left: 16px; border-left: 4px solid var(--accent); }
+.option-btn { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: var(--bg-secondary); border: 2px solid var(--border); cursor: pointer; font-size: 15px; color: var(--text-primary); text-align: left; margin-bottom: 12px; transition: none; }
+.option-btn:hover { border-color: var(--text-primary); background: var(--bg-primary); }
+.option-btn.selected { border-color: var(--accent); background: var(--text-primary); color: white; }
+.option-btn .option-letter { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 2px solid var(--border); font-weight: 700; font-size: 13px; color: var(--text-secondary); background: var(--bg-secondary); }
+.option-btn.selected .option-letter { border-color: white; color: var(--text-primary); background: white; }
+
+code { font-family: 'Courier New', monospace; background: var(--bg-primary); padding: 2px 6px; border: 1px solid var(--border); font-size: 14px; }
+pre code { display: block; padding: 16px; padding-left: 20px; overflow-x: auto; border-left: 4px solid var(--text-secondary); background: var(--bg-primary); margin-top: 12px; }
+
+.progress-bar-container { position: sticky; top: 0; z-index: 100; background: var(--bg-secondary); padding: 16px 0; border-bottom: 2px solid var(--text-primary); margin-bottom: 32px; }
+.progress-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+.progress-bar { width: 100%; height: 8px; background: var(--border); }
+.progress-fill { height: 100%; background: var(--text-primary); transition: width 0.3s ease; }
+
+.violation-warning { position: fixed; top: 0; left: 0; right: 0; background: var(--danger); color: white; padding: 16px; text-align: center; font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; z-index: 9999; display: none;}
+.hidden { display: none !important; }
+.mt-2 { margin-top: 16px; }
+.mt-4 { margin-top: 32px; }
+.text-center { text-align: center; }
+
+.toast { position: fixed; bottom: 24px; right: 24px; padding: 16px 24px; background: var(--text-primary); color: white; font-size: 14px; font-weight: 600; z-index: 10000; animation: slideUp 0.3s ease; border-left: 4px solid var(--accent); box-shadow: var(--shadow); }
+.toast-error { border-left-color: var(--danger); }
+.toast-success { border-left-color: var(--success); }
+@keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.success-screen { text-align: center; padding: 40px 20px; }
+.success-screen .checkmark { font-size: 48px; margin-bottom: 16px; }
+.success-screen h2 { font-size: 24px; font-weight: 800; color: var(--text-primary); text-transform: uppercase; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+    <div id="violation-warning" class="violation-warning">
+        ⚠️ Tab switch detected! Warning <span id="violation-count">0</span>/2 — Your exam will be auto-submitted after 2 violations.
+    </div>
+
+    <div class="container">
+        <!-- Login Screen -->
+        <div id="login-screen">
+            <div class="login-card card">
+                <h2>📝 Python Developer Assessment</h2>
+                <p>2+ Years Experience Level. 50 Thought-Provoking Questions.</p>
+                <div class="form-group mt-4">
+                    <label class="form-label">Your Full Name</label>
+                    <input type="text" id="student-name" class="form-input" placeholder="Enter your full name">
+                </div>
+                <div class="strict-mode-banner">
+                    🔒 <strong>Strict Mode:</strong> The exam will enter fullscreen. Switching tabs will be flagged. After 2 violations, your exam will be auto-submitted.
+                </div>
+                <button class="btn btn-primary btn-lg" style="width: 100%;" onclick="startExam()">
+                    🚀 Start Exam
+                </button>
+            </div>
+        </div>
+
+        <!-- Exam Screen -->
+        <div id="exam-screen" class="hidden">
+            <div class="progress-bar-container">
+                <div class="container">
+                    <div class="progress-info">
+                        <span id="progress-text">Question 0 / 50</span>
+                        <span id="answered-text">0 answered</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="questions-container"></div>
+
+            <div class="text-center mt-4" style="padding-bottom: 80px;">
+                <button id="submit-btn" class="btn btn-success btn-lg" onclick="submitExam()">
+                    ✅ Finish & Download Results
+                </button>
+            </div>
+        </div>
+
+        <!-- Success Screen -->
+        <div id="success-screen" class="hidden">
+            <div class="success-screen">
+                <div class="checkmark">🎉</div>
+                <h2>Exam Submitted!</h2>
+                <p>Your results have been securely downloaded to your computer as a JSON file.</p>
+                <p class="text-secondary mt-2"><strong>Please email/share this downloaded file with your administrator or AI for grading!</strong></p>
+                <button class="btn btn-primary mt-4" onclick="location.reload()">Return Home</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+const EXAM_DATA = [
+  {
+    "id": 1,
+    "topic": "Dictionaries & Mutable Defaults",
+    "question": "What is the output of the following code?\n```python\ndef update_config(conf={'timeout': 30}):\n    conf['timeout'] = 60\n    return conf\n\nprint(update_config())\nprint(update_config())\n```",
+    "options": [
+      "A) {'timeout': 60} \n {'timeout': 60}",
+      "B) {'timeout': 30} \n {'timeout': 60}",
+      "C) {'timeout': 60} \n {'timeout': 30}",
+      "D) Raises a SyntaxError"
+    ],
+    "answer": "A) {'timeout': 60} \n {'timeout': 60}",
+    "explanation": "Default arguments are evaluated exactly once when the function is defined, not each time it is called. Since a dictionary is mutable, modifying it in one call permanently alters the default object for all future calls."
+  },
+  {
+    "id": 2,
+    "topic": "List Comprehensions & Closures (Late Binding)",
+    "question": "What is the output of the following closure?\n```python\nmultipliers = [lambda x: x * i for i in range(3)]\nprint([m(2) for m in multipliers])\n```",
+    "options": [
+      "A) [0, 2, 4]",
+      "B) [0, 1, 2]",
+      "C) [4, 4, 4]",
+      "D) [2, 2, 2]"
+    ],
+    "answer": "C) [4, 4, 4]",
+    "explanation": "Python's closures are late-binding. The lambdas look up the value of 'i' at the time they are executed, not when they are created. By the time they execute, the loop has finished and 'i' is exactly 2. So all three functions calculate 2 * 2."
+  },
+  {
+    "id": 3,
+    "topic": "Object Identity & Caching",
+    "question": "Which of the following statements about CPython object identity is true?\n```python\nx = 256\ny = 256\na = 257\nb = 257\n```",
+    "options": [
+      "A) (x is y) is True, and (a is b) is True",
+      "B) (x is y) is True, but (a is b) is False",
+      "C) (x is y) is False, and (a is b) is False",
+      "D) (x == y) is True, but (a == b) is False"
+    ],
+    "answer": "B) (x is y) is True, but (a is b) is False",
+    "explanation": "CPython caches small integers between -5 and 256 for performance. Because 256 is cached, x and y point to the exact same memory address. 257 is not cached, so a and b reference distinctly different objects in memory."
+  },
+  {
+    "id": 4,
+    "topic": "Tuple Immutability",
+    "question": "Will this code crash? Why or why not?\n```python\nt = ([1, 2], 'A')\nt[0].append(3)\nprint(t)\n```",
+    "options": [
+      "A) Yes, TypeError: 'tuple' object does not support item assignment",
+      "B) No, it prints ([1, 2], 'A') because the operation is ignored silently",
+      "C) No, it prints ([1, 2, 3], 'A')",
+      "D) Yes, AttributeError: 'tuple' object has no attribute 'append'"
+    ],
+    "answer": "C) No, it prints ([1, 2, 3], 'A')",
+    "explanation": "Tuples are globally immutable, meaning the references they hold cannot be reassigned. However, the list OBJECT itself inside the tuple is still fully mutable. We appended to the list, we did not reassign index 0 of the tuple."
+  },
+  {
+    "id": 5,
+    "topic": "Scope and LEGB Rule",
+    "question": "What happens when you run this code?\n```python\nx = 10\ndef foo():\n    print(x)\n    x = 20\n\nfoo()\n```",
+    "options": [
+      "A) Prints 10",
+      "B) Prints 20",
+      "C) UnboundLocalError: local variable 'x' referenced before assignment",
+      "D) NameError: 'x' is not defined"
+    ],
+    "answer": "C) UnboundLocalError: local variable 'x' referenced before assignment",
+    "explanation": "Because 'x = 20' exists inside the function, Python marks 'x' as a purely local variable for the ENTIRE function block at parse time. Therefore, the print(x) tries to read the local 'x' before it is initialized, completely ignoring the global 'x'."
+  },
+  {
+    "id": 6,
+    "topic": "Dictionary Iteration Modifying",
+    "question": "What is the absolute safest way to delete keys from a dictionary while iterating over it in Python 3?",
+    "options": [
+      "A) for k in list(d.keys()): if cond: del d[k]",
+      "B) for k, v in d.items(): if cond: del d[k]",
+      "C) d = {k: v for k, v in d.items() if not cond}",
+      "D) Both A and C are safe and common strategies"
+    ],
+    "answer": "D) Both A and C are safe and common strategies",
+    "explanation": "You cannot modify a dictionary's size while iterating directly over its view objects (like d.keys()). Converting to a list creates an isolated copy of the keys to iterate on (A), or utilizing dict comprehension creates a brand new dictionary entirely (C)."
+  },
+  {
+    "id": 7,
+    "topic": "MRO (Method Resolution Order)",
+    "question": "Given Python's C3 Linearization (MRO), what is printed?\n```python\nclass A: pass\nclass B(A): pass\nclass C(A): pass\nclass D(B, C): pass\n\nprint([cls.__name__ for cls in D.mro()])\n```",
+    "options": [
+      "A) ['D', 'B', 'C', 'A', 'object']",
+      "B) ['D', 'B', 'A', 'C', 'object']",
+      "C) Raises a TypeError: Cannot create a consistent method resolution",
+      "D) ['D', 'C', 'B', 'A', 'object']"
+    ],
+    "answer": "A) ['D', 'B', 'C', 'A', 'object']",
+    "explanation": "Python prioritizes the order in which classes are inherited horizontally (B before C), but strictly guarantees that no base class (A) is visited before all its descendants (B and C) have been completely visited. So it goes D -> B -> C -> A -> object."
+  },
+  {
+    "id": 8,
+    "topic": "String Interning",
+    "question": "What is the output?\n```python\na = 'hello world'\nb = 'hello world'\nprint(a is b)\n```",
+    "options": [
+      "A) True",
+      "B) False",
+      "C) It varies randomly per execution depending on GC",
+      "D) SyntaxError"
+    ],
+    "answer": "B) False",
+    "explanation": "Strings with spaces are generally NOT automatically interned by the Python compiler, unlike short identifiers without spaces. While a == b is True, they occupy different spaces in memory, hence `is` returns False."
+  },
+  {
+    "id": 9,
+    "topic": "Exceptions in Finally",
+    "question": "What gets returned by foo()?\n```python\ndef foo():\n    try:\n        return 1\n    finally:\n        return 2\n```",
+    "options": [
+      "A) 1",
+      "B) 2",
+      "C) Returns a tuple (1, 2)",
+      "D) SyntaxError: 'return' outside function"
+    ],
+    "answer": "B) 2",
+    "explanation": "The 'finally' block is guaranteed to execute absolutely last before the logical frame exits. If a finally block contains a return statement, it will completely overwrite any return statements triggered in the try or except blocks."
+  },
+  {
+    "id": 10,
+    "topic": "Boolean Evaluation",
+    "question": "What is the output of the following boolean logic?\n```python\nprint(0 or [] or 'Hello' or 5)\nprint(1 and [1,2] and 'World' and 0)\n```",
+    "options": [
+      "A) True \n False",
+      "B) 'Hello' \n 0",
+      "C) 5 \n 'World'",
+      "D) ValueError"
+    ],
+    "answer": "B) 'Hello' \n 0",
+    "explanation": "The 'or' operator evaluates short-circuiting at the FIRST 'truthy' value (which is 'Hello'). The 'and' operator returns the extremely LAST evaluated value, stopping at the first 'falsy' value (which is 0)."
+  },
+  {
+    "id": 11,
+    "topic": "Iterators vs Generators",
+    "question": "Can you iterate through a generator more than once?\n```python\ngen = (x for x in range(3))\nlist1 = list(gen)\nlist2 = list(gen)\nprint(list2)\n```",
+    "options": [
+      "A) [0, 1, 2]",
+      "B) []",
+      "C) Raises StopIteration",
+      "D) [2, 1, 0]"
+    ],
+    "answer": "B) []",
+    "explanation": "Generators evaluate lazily and are exhausted universally once iterated. Because list1 pulled all items from the generator, it reaches the end. list2 tries to iterate it again, but since generators cannot be magically rewound, it simply returns an empty list."
+  },
+  {
+    "id": 12,
+    "topic": "Multiple Inheritance Super()",
+    "question": "Why is it mathematically dangerous to use class name prefixes directly instead of super() in multiple inheritance?\n(e.g., ParentClass.__init__(self))",
+    "options": [
+      "A) It prevents child classes from accessing static methods.",
+      "B) It bypasses C3 linearization, potentially calling a base class __init__ twice (Diamond Problem).",
+      "C) It is deprecated in Python 3.8+ and raises syntax errors.",
+      "D) It converts the class into an abstract base class implicitly."
+    ],
+    "answer": "B) It bypasses C3 linearization, potentially calling a base class __init__ twice (Diamond Problem).",
+    "explanation": "Calling a parent method directly explicitly breaks Python's built-in MRO (Method Resolution Order). In diamond structures, this guarantees the top-level parent's __init__ will execute multiple times, overwriting state and corrupting performance. super() guarantees 1 call per node."
+  },
+  {
+    "id": 13,
+    "topic": "Set Operations",
+    "question": "What is the time complexity of `x in my_set` on average in Python?",
+    "options": [
+      "A) O(N)",
+      "B) O(log N)",
+      "C) O(1)",
+      "D) O(N^2)"
+    ],
+    "answer": "C) O(1)",
+    "explanation": "Sets in Python are implemented dynamically under the hood using hash tables. Due to hashing algorithms, lookups mathematically resolve instantly regardless of data size on average, giving a blistering O(1) time complexity."
+  },
+  {
+    "id": 14,
+    "topic": "Decorators",
+    "question": "What is a standard Python Decorator fundamentally?",
+    "options": [
+      "A) A native class that automatically registers global module states.",
+      "B) Simply a higher-order function that takes a function as input and returns a modified function.",
+      "C) A design pattern strictly for validating HTML routes in web frameworks.",
+      "D) A macro language extension."
+    ],
+    "answer": "B) Simply a higher-order function that takes a function as input and returns a modified function.",
+    "explanation": "A decorator (@my_dec) is purely syntactic sugar for: my_func = my_dec(my_func). It wraps a callable inside another callable dynamically, allowing behavior hijacking without touching the original target's core code."
+  },
+  {
+    "id": 15,
+    "topic": "Truthy/Falsy nuances",
+    "question": "Which of these natively evaluates to True in Python?\n```python\n1) bool([[]])\n2) bool((0,))\n3) bool(range(0))\n```",
+    "options": [
+      "A) 1 and 2",
+      "B) Only 1",
+      "C) 1, 2, and 3",
+      "D) None of them"
+    ],
+    "answer": "A) 1 and 2",
+    "explanation": "[[]] is a list containing exactly one item (which happens to be an empty list). Because the outer list has length 1, it checks true. (0,) is a tuple containing exactly one item. range(0) generates 0 items locally, meaning length 0, meaning False."
+  }
+]; 
+
+let answers = {};
+let violations = 0;
+const MAX_VIOLATIONS = 2;
+let examStarted = false;
+let studentName = "";
+
+function startExam() {
+    studentName = document.getElementById('student-name').value.trim();
+    if (!studentName) { showToast('Please enter your name', 'error'); return; }
+
+    if (EXAM_DATA.length === 0) {
+        showToast('Error: No questions loaded. Please inject JSON data.', 'error');
+        return;
+    }
+
+    renderQuestions();
+    
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('exam-screen').classList.remove('hidden');
+    examStarted = true;
+
+    enterFullscreen();
+    startStrictMode();
+}
+
+function renderQuestions() {
+    const container = document.getElementById('questions-container');
+    container.innerHTML = '';
+
+    EXAM_DATA.forEach((q, index) => {
+        const card = document.createElement('div');
+        card.className = 'question-card';
+        card.id = `question-${q.id}`;
+
+        card.innerHTML = `
+            <div class="q-number">Question ${index + 1} of ${EXAM_DATA.length}</div>
+            <div class="q-text">${escapeHtml(q.question)}</div>
+            <div class="options-list">
+                ${q.options.map((opt, i) => `
+                    <div class="option-btn" onclick="selectOption(${q.id}, '${escapeJs(opt)}')" 
+                         id="opt-${q.id}-${i}">
+                        <span class="option-letter">${String.fromCharCode(65 + i)}</span>
+                        <span>${escapeHtml(opt)}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        container.appendChild(card);
+    });
+    updateProgress();
+}
+
+function selectOption(questionId, option) {
+    answers[questionId] = option;
+    const card = document.getElementById(`question-${questionId}`);
+    card.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected'));
+    
+    card.querySelectorAll('.option-btn').forEach(btn => {
+        const btnText = btn.querySelector('span:last-child').textContent;
+        if (btnText === option) {
+            btn.classList.add('selected');
+        }
+    });
+    updateProgress();
+}
+
+function updateProgress() {
+    const total = EXAM_DATA.length;
+    const answered = Object.keys(answers).length;
+    const percent = total > 0 ? (answered / total) * 100 : 0;
+
+    document.getElementById('progress-text').textContent = `${total} questions`;
+    document.getElementById('answered-text').textContent = `${answered} answered`;
+    document.getElementById('progress-fill').style.width = `${percent}%`;
+}
+
+function submitExam(autoSubmit = false) {
+    if (!autoSubmit) {
+        const answered = Object.keys(answers).length;
+        const total = EXAM_DATA.length;
+        if (answered < total) {
+            if (!confirm(`You have answered ${answered} out of ${total} questions. Submit anyway?`)) return;
+        } else {
+            if (!confirm('Are you sure you want to hand in your exam?')) return;
+        }
+    }
+
+    examStarted = false;
+    exitFullscreen();
+
+    // 1. Calculate Score
+    let correctCount = 0;
+    const gradedResponses = EXAM_DATA.map(q => {
+        const studentAns = answers[q.id] || "No Answer";
+        const isCorrect = (studentAns === q.answer);
+        if (isCorrect) correctCount++;
+        return {
+            question_id: q.id,
+            topic: q.topic,
+            question: q.question,
+            student_answer: studentAns,
+            correct_answer: q.answer,
+            is_correct: isCorrect,
+            explanation: q.explanation
+        };
+    });
+
+    // 2. Build Result JSON Object
+    const resultsData = {
+        student_name: studentName,
+        exam_title: "Python Developer Assessment",
+        timestamp: new Date().toISOString(),
+        score: correctCount,
+        total_questions: EXAM_DATA.length,
+        percentage_score: Math.round((correctCount / EXAM_DATA.length) * 100) + "%",
+        violations_recorded: violations,
+        auto_submitted: autoSubmit,
+        detailed_responses: gradedResponses
+    };
+
+    // 3. Trigger Browser Download of JSON File
+    const jsonStr = JSON.stringify(resultsData, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ExamForge_Results_${studentName.replace(/\\s+/g, '_')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 0);
+
+    // 4. Show Celebration UI
+    document.getElementById('exam-screen').classList.add('hidden');
+    document.getElementById('violation-warning').style.display = 'none';
+    document.getElementById('success-screen').classList.remove('hidden');
+}
+
+
+// ---- Strict Mode ----
+function enterFullscreen() {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) elem.requestFullscreen();
+    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+}
+
+function exitFullscreen() {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    else if (document.msExitFullscreen) document.msExitFullscreen();
+}
+
+function startStrictMode() {
+    document.addEventListener('visibilitychange', () => {
+        if (!examStarted) return;
+        if (document.hidden) {
+            violations++;
+            document.getElementById('violation-count').textContent = violations;
+            document.getElementById('violation-warning').style.display = 'block';
+
+            if (violations >= MAX_VIOLATIONS) {
+                showToast('Maximum violations reached! Auto-submitting...', 'error');
+                setTimeout(() => submitExam(true), 1500);
+            }
+        }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+        if (!examStarted) return;
+        if (!document.fullscreenElement) {
+            violations++;
+            document.getElementById('violation-count').textContent = violations;
+            document.getElementById('violation-warning').style.display = 'block';
+            
+            if (violations >= MAX_VIOLATIONS) {
+                showToast('Maximum violations reached! Auto-submitting...', 'error');
+                setTimeout(() => submitExam(true), 1500);
+            } else {
+                setTimeout(enterFullscreen, 500);
+            }
+        }
+    });
+
+    document.addEventListener('contextmenu', (e) => {
+        if (examStarted) e.preventDefault();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (!examStarted) return;
+        if ((e.ctrlKey && ['c', 'v', 'a', 'p', 'u'].includes(e.key.toLowerCase())) || e.key === 'F12') {
+            e.preventDefault();
+            showToast('⚠️ Keyboard shortcuts are disabled during the exam', 'error');
+        }
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return "";
+    const div = document.createElement('div');
+    // Basic markdown-to-html conversion for code blocks since python won't render it now
+    let htmlText = text;
+    if (htmlText.includes('```')) {
+        htmlText = htmlText.replace(/```[a-z]*\n([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    }
+    div.innerHTML = htmlText;
+    return div.innerHTML;
+}
+
+function escapeJs(text) {
+    if (!text) return "";
+    return text.toString().replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+}
+</script>
+</body>
+</html>
