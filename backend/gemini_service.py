@@ -94,9 +94,8 @@ Tone: Professional, precise, and educational.
         
         for i, count in enumerate(chunks):
             if i > 0:
-                print(f"\n⏳ Sleeping for 15 seconds to respect Gemini API free-tier rate limits...")
-                logging.info(f"Sleeping for 15 seconds to respect Gemini API rate limits...")
-                time.sleep(15)
+                print(f"\n⏳ Sleeping for 1 second to pace Gemini API calls...")
+                time.sleep(1)
                 
             print(f"\n⏳ Processing Chunk {i+1}/{len(chunks)} ({count} questions)...")
             logging.info(f"Processing Chunk {i+1}/{len(chunks)} ({count} questions)...")
