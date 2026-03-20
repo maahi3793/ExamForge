@@ -207,6 +207,20 @@ Tone: Professional, precise, and educational.
                 print(f"❌ Chunk Attempt {attempt + 1} failed: {e}")
                 logging.warning(f"Chunk Attempt {attempt + 1} failed: {e}")
                 
+                # Debugging: Dump the exact text that failed parsing
+                print("\n" + "="*50)
+                print("🚨 DEBUG: FAILED RAW RESPONSE TEXT 🚨")
+                print("="*50)
+                try:
+                    print(response.text)
+                except Exception as text_err:
+                    print(f"(Could not print response.text: {text_err})")
+                try:
+                    print("clean text variable:", text)
+                except:
+                    pass
+                print("="*50 + "\n")
+                
                 # Don't retry on API key errors — they'll fail every time
                 if 'API_KEY_INVALID' in str(e) or 'API key not valid' in str(e):
                     print("\n🔑 Your API key is invalid! Please check your .env file.")
