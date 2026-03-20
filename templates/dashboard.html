@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ExamForge — AI-Powered Exam Platform for Teachers">
+    <title>ExamForge — Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <a href="/" class="navbar-brand">
+                <div>
+                    <div class="logo">⚡ ExamForge</div>
+                    <div class="tagline">AI-Powered Exam Platform</div>
+                </div>
+            </a>
+            <div class="navbar-actions">
+                <a href="/create" class="btn btn-primary">
+                    ✨ Create New Exam
+                </a>
+            </div>
+        </nav>
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>Your Exams</h1>
+            <p>Manage your exams, view submissions, and analyze student performance</p>
+        </div>
+
+        <!-- Exam Grid -->
+        {% if exams %}
+        <div class="exam-grid">
+            {% for exam in exams %}
+            <div class="card exam-card" onclick="window.location='/results/{{ exam.id }}'">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">{{ exam.title }}</div>
+                        <div class="card-subtitle">Created {{ exam.created_at }}</div>
+                    </div>
+                    <span class="status-badge status-{{ exam.status }}">{{ exam.status }}</span>
+                </div>
+                <div class="exam-code">{{ exam.exam_code }}</div>
+                <div class="exam-meta">
+                    <span>📝 {{ exam.question_count }} questions</span>
+                    <span>👥 {{ exam.submission_count }} submissions</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">📝</div>
+            <h3>No exams yet</h3>
+            <p>Create your first AI-powered exam and share it with your students!</p>
+            <a href="/create" class="btn btn-primary btn-lg">✨ Create Your First Exam</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

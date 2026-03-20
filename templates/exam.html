@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if exam %}{{ exam.title }} — ExamForge{% else %}Exam — ExamForge{% endif %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Violation Warning Banner -->
+    <div id="violation-warning" class="violation-warning">
+        ⚠️ Tab switch detected! Warning <span id="violation-count">0</span>/2 — Your exam will be auto-submitted after 2 violations.
+    </div>
+
+    <div class="container">
+        {% if error %}
+        <!-- Error State -->
+        <div class="error-page">
+            <div class="icon">😔</div>
+            <h2>Oops!</h2>
+            <p>{{ error }}</p>
+        </div>
+
+        {% else %}
+        <!-- Login Screen -->
+        <div id="login-screen">
+            <div class="login-card card">
+                <h2>📝 {{ exam.title }}</h2>
+                <p>Enter your details to start the exam</p>
+                <div class="form-group">
+                    <label class="form-label">Your Name</label>
+                    <input type="text" id="student-name" class="form-input" placeholder="Enter your full name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" id="student-email" class="form-input" placeholder="Enter your email">
+                </div>
+
+                <div class="strict-mode-banner">
+                    🔒 <strong>Strict Mode:</strong> The exam will enter fullscreen. Switching tabs will be flagged. After 2 violations, your exam will be auto-submitted.
+                </div>
+
+                <button class="btn btn-primary btn-lg" style="width: 100%;" onclick="startExam()">
+                    🚀 Start Exam
+                </button>
+            </div>
+        </div>
+
+        <!-- Exam Screen -->
+        <div id="exam-screen" class="hidden">
+            <!-- Progress Bar -->
+            <div class="progress-bar-container">
+                <div class="container">
+                    <div class="progress-info">
+                        <span id="progress-text">Question 0 / 0</span>
+                        <span id="answered-text">0 answered</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Questions Container -->
+            <div id="questions-container"></div>
+
+            <!-- Submit Button -->
+            <div class="text-center mt-4" style="padding-bottom: 40px;">
+                <button id="submit-btn" class="btn btn-success btn-lg" onclick="submitExam()">
+                    ✅ Submit Exam
+                </button>
+            </div>
+        </div>
+
+        <!-- Success Screen -->
+        <div id="success-screen" class="hidden">
+            <div class="success-screen">
+                <div class="checkmark">🎉</div>
+                <h2>Exam Submitted!</h2>
+                <p>Your answers have been recorded successfully.</p>
+                <p class="text-muted mt-2">Your teacher will review your results and share them with you.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if exam %}
+    <script>
+        const EXAM_CODE = "{{ exam.exam_code }}";
+        let questions = [];
+        let answers = {};
+        let violations = 0;
+        const MAX_VIOLATIONS = 2;
+        let examStarted = false;
+
+        async function startExam() {
+            const name = document.getElementById('student-name').value.trim();
+            const email = document.getElementById('student-email').value.trim();
+
+            if (!name) { showToast('Please enter your name', 'error'); return; }
+            if (!email || !email.includes('@')) { showToast('Please enter a valid email', 'error'); return; }
+
+            // Fetch questions
+            try {
+                const response = await fetch(`/api/exam/${EXAM_CODE}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+
+                questions = data.questions;
+                renderQuestions();
+                
+                // Switch screens
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('exam-screen').classList.remove('hidden');
+                examStarted = true;
+
+                // Enter fullscreen
+                enterFullscreen();
+
+                // Start monitoring
+                startStrictMode();
+
+            } catch (error) {
+                showToast('Failed to load exam. Please try again.', 'error');
+            }
+        }
+
+        function renderQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+
+            questions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = 'question-card';
+                card.id = `question-${q.id}`;
+
+                const topicBadge = q.topic ? `<div class="q-topic">${q.topic}</div>` : '';
+
+                card.innerHTML = `
+                    <div class="q-number">Question ${index + 1} of ${questions.length}</div>
+                    ${topicBadge}
+                    <div class="q-text">${escapeHtml(q.question)}</div>
+                    <div class="options-list">
+                        ${q.options.map((opt, i) => `
+                            <div class="option-btn" onclick="selectOption(${q.id}, '${escapeJs(opt)}')" 
+                                 id="opt-${q.id}-${i}">
+                                <span class="option-letter">${String.fromCharCode(65 + i)}</span>
+                                <span>${escapeHtml(opt)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+
+            updateProgress();
+        }
+
+        function selectOption(questionId, option) {
+            answers[questionId] = option;
+
+            // Update UI
+            const card = document.getElementById(`question-${questionId}`);
+            card.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected'));
+            
+            // Find and select the clicked option
+            card.querySelectorAll('.option-btn').forEach(btn => {
+                const btnText = btn.querySelector('span:last-child').textContent;
+                if (btnText === option) {
+                    btn.classList.add('selected');
+                }
+            });
+
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const total = questions.length;
+            const answered = Object.keys(answers).length;
+            const percent = total > 0 ? (answered / total) * 100 : 0;
+
+            document.getElementById('progress-text').textContent = `${total} questions`;
+            document.getElementById('answered-text').textContent = `${answered} answered`;
+            document.getElementById('progress-fill').style.width = `${percent}%`;
+        }
+
+        async function submitExam(autoSubmit = false) {
+            if (!autoSubmit) {
+                const answered = Object.keys(answers).length;
+                const total = questions.length;
+                if (answered < total) {
+                    if (!confirm(`You have answered ${answered} out of ${total} questions. Submit anyway?`)) {
+                        return;
+                    }
+                } else {
+                    if (!confirm('Are you sure you want to submit your exam?')) {
+                        return;
+                    }
+                }
+            }
+
+            const name = document.getElementById('student-name').value.trim();
+            const email = document.getElementById('student-email').value.trim();
+
+            try {
+                const response = await fetch('/api/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        exam_code: EXAM_CODE,
+                        student_name: name,
+                        student_email: email,
+                        answers: answers,
+                        violations: violations
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    examStarted = false;
+                    exitFullscreen();
+                    document.getElementById('exam-screen').classList.add('hidden');
+                    document.getElementById('success-screen').classList.remove('hidden');
+                    document.getElementById('violation-warning').style.display = 'none';
+                } else {
+                    showToast(data.error || 'Submission failed', 'error');
+                }
+            } catch (error) {
+                showToast('Network error. Please try again.', 'error');
+            }
+        }
+
+        // ---- Strict Mode ----
+        function enterFullscreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) elem.requestFullscreen();
+            else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+            else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+        }
+
+        function exitFullscreen() {
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+        }
+
+        function startStrictMode() {
+            // Tab visibility detection
+            document.addEventListener('visibilitychange', () => {
+                if (!examStarted) return;
+                if (document.hidden) {
+                    violations++;
+                    document.getElementById('violation-count').textContent = violations;
+                    const warning = document.getElementById('violation-warning');
+                    warning.style.display = 'block';
+
+                    if (violations >= MAX_VIOLATIONS) {
+                        showToast('Maximum violations reached! Auto-submitting...', 'error');
+                        setTimeout(() => submitExam(true), 1500);
+                    }
+                }
+            });
+
+            // Re-enter fullscreen if exited
+            document.addEventListener('fullscreenchange', () => {
+                if (!examStarted) return;
+                if (!document.fullscreenElement) {
+                    // They exited fullscreen — count as violation
+                    violations++;
+                    document.getElementById('violation-count').textContent = violations;
+                    document.getElementById('violation-warning').style.display = 'block';
+                    
+                    if (violations >= MAX_VIOLATIONS) {
+                        showToast('Maximum violations reached! Auto-submitting...', 'error');
+                        setTimeout(() => submitExam(true), 1500);
+                    } else {
+                        // Try to re-enter fullscreen
+                        setTimeout(enterFullscreen, 500);
+                    }
+                }
+            });
+
+            // Disable right-click
+            document.addEventListener('contextmenu', (e) => {
+                if (examStarted) e.preventDefault();
+            });
+
+            // Disable common shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (!examStarted) return;
+                // Ctrl+C, Ctrl+V, Ctrl+A, Ctrl+P, F12
+                if ((e.ctrlKey && ['c', 'v', 'a', 'p', 'u'].includes(e.key.toLowerCase())) || e.key === 'F12') {
+                    e.preventDefault();
+                    showToast('⚠️ Keyboard shortcuts are disabled during the exam', 'error');
+                }
+            });
+        }
+
+        // ---- Utilities ----
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function escapeJs(text) {
+            return text.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+    </script>
+    {% endif %}
+</body>
+</html>

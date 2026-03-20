@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results — {{ exam.title }} — ExamForge</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <a href="/" class="navbar-brand">
+                <div>
+                    <div class="logo">⚡ ExamForge</div>
+                    <div class="tagline">AI-Powered Exam Platform</div>
+                </div>
+            </a>
+            <div class="navbar-actions">
+                <a href="/" class="btn btn-ghost">← Back to Dashboard</a>
+            </div>
+        </nav>
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>{{ exam.title }}</h1>
+            <p>
+                Exam Code: <strong style="color: var(--accent); letter-spacing: 2px;">{{ exam.exam_code }}</strong>
+                &nbsp;·&nbsp; {{ exam.question_count }} questions
+                &nbsp;·&nbsp; {{ submissions|length }} submissions
+            </p>
+        </div>
+
+        <!-- Share Link Box -->
+        <div class="card mb-3" style="max-width: 600px;">
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">📤 Share with students</div>
+            <div class="share-box">
+                <input type="text" id="share-link" value="{{ request.host_url }}exam/{{ exam.exam_code }}" readonly>
+                <button class="btn btn-primary btn-sm" onclick="copyLink()">📋 Copy</button>
+            </div>
+        </div>
+
+        {% if submissions %}
+        <!-- Results Table -->
+        <div class="card">
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Email</th>
+                        <th>Score</th>
+                        <th>Violations</th>
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in submissions %}
+                    <tr>
+                        <td><strong>{{ sub.student_name }}</strong></td>
+                        <td style="color: var(--text-secondary);">{{ sub.student_email }}</td>
+                        <td>
+                            {% set pct = (sub.score / sub.total * 100) if sub.total > 0 else 0 %}
+                            <span class="score-badge {% if pct >= 70 %}score-high{% elif pct >= 40 %}score-mid{% else %}score-low{% endif %}">
+                                {{ sub.score }}/{{ sub.total }} ({{ pct|int }}%)
+                            </span>
+                        </td>
+                        <td>
+                            <span class="violation-badge {% if sub.violations == 0 %}violation-clean{% elif sub.violations == 1 %}violation-warn{% else %}violation-bad{% endif %}">
+                                {% if sub.violations == 0 %}✅ Clean{% else %}⚠️ {{ sub.violations }}{% endif %}
+                            </span>
+                        </td>
+                        <td style="color: var(--text-secondary); font-size: 13px;">{{ sub.submitted_at }}</td>
+                        <td>
+                            {% if sub.has_analysis %}
+                            <button class="btn btn-ghost btn-sm" onclick="toggleAnalysis({{ sub.id }})">
+                                📊 View Analysis
+                            </button>
+                            {% else %}
+                            <button class="btn btn-primary btn-sm" onclick="analyzeStudent({{ sub.id }})" id="analyze-btn-{{ sub.id }}">
+                                🤖 Analyze
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr id="analysis-row-{{ sub.id }}" class="hidden">
+                        <td colspan="6" style="padding: 0; border: none;">
+                            <div id="analysis-panel-{{ sub.id }}" class="analysis-panel">
+                                {% if sub.has_analysis %}
+                                    {{ renderAnalysis(sub.analysis) }}
+                                {% else %}
+                                    <p class="text-muted">Click "Analyze" to generate AI insights</p>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">👥</div>
+            <h3>No submissions yet</h3>
+            <p>Share the exam link with your students and wait for them to submit.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        async function analyzeStudent(submissionId) {
+            const btn = document.getElementById(`analyze-btn-${submissionId}`);
+            btn.disabled = true;
+            btn.textContent = '⏳ Analyzing...';
+
+            try {
+                const response = await fetch(`/api/analyze/${submissionId}`, { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    const panel = document.getElementById(`analysis-panel-${submissionId}`);
+                    panel.innerHTML = buildAnalysisHTML(data.analysis);
+                    
+                    // Show the analysis row
+                    document.getElementById(`analysis-row-${submissionId}`).classList.remove('hidden');
+                    
+                    // Update button
+                    btn.textContent = '📊 View Analysis';
+                    btn.className = 'btn btn-ghost btn-sm';
+                    btn.disabled = false;
+                    btn.onclick = () => toggleAnalysis(submissionId);
+                    
+                    showToast('Analysis generated! 📊', 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                btn.disabled = false;
+                btn.textContent = '🤖 Analyze';
+                showToast(error.message || 'Analysis failed', 'error');
+            }
+        }
+
+        function toggleAnalysis(submissionId) {
+            const row = document.getElementById(`analysis-row-${submissionId}`);
+            row.classList.toggle('hidden');
+            
+            // If no content loaded yet, fetch it
+            const panel = document.getElementById(`analysis-panel-${submissionId}`);
+            if (panel.innerHTML.includes('Click "Analyze"') || !panel.innerHTML.trim()) {
+                fetchAnalysis(submissionId);
+            }
+        }
+
+        async function fetchAnalysis(submissionId) {
+            try {
+                const response = await fetch(`/api/results/${submissionId}`);
+                const data = await response.json();
+                if (!data.error) {
+                    const panel = document.getElementById(`analysis-panel-${submissionId}`);
+                    panel.innerHTML = buildAnalysisHTML(data);
+                }
+            } catch (e) {
+                // Silently fail — will show existing content
+            }
+        }
+
+        function buildAnalysisHTML(analysis) {
+            const a = analysis;
+            
+            let strengthsHTML = '';
+            if (a.strengths && a.strengths.length > 0) {
+                strengthsHTML = `
+                    <div class="analysis-section">
+                        <h4>💪 Strengths</h4>
+                        <ul>${a.strengths.map(s => `<li><strong>${s.topic || 'General'}:</strong> ${s.detail}</li>`).join('')}</ul>
+                    </div>`;
+            }
+
+            let weaknessesHTML = '';
+            if (a.weaknesses && a.weaknesses.length > 0) {
+                weaknessesHTML = `
+                    <div class="analysis-section">
+                        <h4>⚠️ Areas to Improve</h4>
+                        <ul>${a.weaknesses.map(w => `
+                            <li>
+                                <strong>${w.topic || 'General'}:</strong> ${w.detail}
+                                ${w.suggestion ? `<br><em style="color: var(--accent);">→ ${w.suggestion}</em>` : ''}
+                            </li>`).join('')}</ul>
+                    </div>`;
+            }
+
+            let wrongHTML = '';
+            if (a.wrong_answers && a.wrong_answers.length > 0) {
+                wrongHTML = `
+                    <div class="analysis-section">
+                        <h4>❌ Wrong Answers Breakdown</h4>
+                        ${a.wrong_answers.map(w => `
+                            <div style="background: rgba(239,68,68,0.05); border-left: 3px solid var(--danger); padding: 12px 16px; margin-bottom: 10px; border-radius: 0 8px 8px 0;">
+                                <div style="font-size: 13px; font-weight: 600; margin-bottom: 6px;">Q${w.question_id}: ${escapeHtml(w.question || '')}</div>
+                                <div style="font-size: 13px; color: var(--danger);">Student answered: ${escapeHtml(w.student_answered || '')}</div>
+                                <div style="font-size: 13px; color: var(--success);">Correct answer: ${escapeHtml(w.correct_answer || '')}</div>
+                                <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">${escapeHtml(w.why_wrong || '')}</div>
+                            </div>`).join('')}
+                    </div>`;
+            }
+
+            let topicsHTML = '';
+            if (a.topics_to_revisit && a.topics_to_revisit.length > 0) {
+                topicsHTML = `
+                    <div class="analysis-section">
+                        <h4>📚 Topics to Revisit</h4>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            ${a.topics_to_revisit.map(t => `<span style="background: rgba(139,92,246,0.1); color: var(--accent); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;">${escapeHtml(t)}</span>`).join('')}
+                        </div>
+                    </div>`;
+            }
+
+            return `
+                <h3>📊 AI Analysis</h3>
+                
+                <div class="analysis-section" style="display: flex; align-items: center; gap: 16px;">
+                    <div class="grade-display">${a.grade || 'N/A'}</div>
+                    <div>
+                        <div style="font-size: 20px; font-weight: 700;">${a.overall_score || '?/?'} 
+                            <span style="font-size: 14px; color: var(--text-muted);">(${a.percentage || 0}%)</span>
+                        </div>
+                        <div class="readiness-badge mt-1">${a.readiness_level || 'Unknown'}</div>
+                    </div>
+                </div>
+
+                <div class="analysis-section">
+                    <h4>📝 Overall Assessment</h4>
+                    <p>${escapeHtml(a.overall_assessment || 'No assessment available.')}</p>
+                </div>
+
+                ${strengthsHTML}
+                ${weaknessesHTML}
+                ${wrongHTML}
+                ${topicsHTML}
+
+                ${a.study_recommendations ? `
+                <div class="analysis-section">
+                    <h4>🎯 Study Recommendations</h4>
+                    <p>${escapeHtml(a.study_recommendations)}</p>
+                </div>` : ''}
+            `;
+        }
+
+        function copyLink() {
+            const input = document.getElementById('share-link');
+            input.select();
+            navigator.clipboard.writeText(input.value);
+            showToast('Link copied! 📋', 'success');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+    </script>
+</body>
+</html>
