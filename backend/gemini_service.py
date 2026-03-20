@@ -74,15 +74,43 @@ Tone: Professional, precise, and educational.
             print(f"   • {t}")
         if len(topics) > 5:
             print(f"   ... and {len(topics) - 5} more")
-        print(f"🎯 Generating {question_count} MCQs...")
-        logging.info(f"Generating {question_count} MCQs for {len(topics)} topics")
+        
+        all_questions = []
+        chunk_size = 15 # Max questions per API call to avoid JSON truncation
+        
+        chunks = []
+        remaining = total_question_count
+        while remaining > 0:
+            if remaining >= chunk_size:
+                chunks.append(chunk_size)
+                remaining -= chunk_size
+            else:
+                chunks.append(remaining)
+                remaining = 0
 
+        logging.info(f"Generating {total_question_count} MCQs in {len(chunks)} chunks: {chunks}")
+        print(f"🎯 Generating {total_question_count} MCQs in {len(chunks)} chunks...")
+        
+        for i, count in enumerate(chunks):
+            print(f"\n⏳ Processing Chunk {i+1}/{len(chunks)} ({count} questions)...")
+            logging.info(f"Processing Chunk {i+1}/{len(chunks)} ({count} questions)...")
+            chunk_results = self._generate_mcq_chunk(topics_str, count, current_id_offset=len(all_questions))
+            all_questions.extend(chunk_results)
+            
+        final_json = {
+            "questions": all_questions
+        }
+        print(f"✅ All {total_question_count} MCQs generated successfully.")
+        logging.info(f"✅ All {total_question_count} MCQs generated successfully.")
+        return json.dumps(final_json)
+
+    def _generate_mcq_chunk(self, topics_str: str, question_count: int, current_id_offset: int) -> list:
+        """Generate a specific chunk of MCQs, with retry logic."""
         max_retries = 3
         last_error = None
         for attempt in range(max_retries):
             try:
-                print(f"\n⏳ Attempt {attempt + 1}/{max_retries}...")
-                logging.info(f"MCQ Generation Attempt {attempt + 1}/{max_retries}")
+                logging.info(f"Chunk Attempt {attempt + 1}/{max_retries} for {question_count} questions")
 
                 prompt = f"""
                 You are a senior technical interviewer creating an assessment for a developer with 2+ years of experience.
@@ -160,22 +188,24 @@ Tone: Professional, precise, and educational.
                         raise ValueError("Empty question text found")
                     options = q.get('options', [])
                     if len(options) != 4:
-                        raise ValueError(f"Question {q.get('id')} has {len(options)} options")
+                        raise ValueError(f"Question has {len(options)} options instead of 4")
                     answer = q.get('answer', '')
                     if answer not in options:
-                        raise ValueError(f"Answer '{answer}' not in options for Q{q.get('id')}")
+                        raise ValueError(f"Answer '{answer}' not in options")
                     for opt in options:
                         if len(opt.strip()) < 3:
                             raise ValueError(f"Empty/malformed option: '{opt}'")
+                            
+                    # Fix ID ordering for combined chunks
+                    q['id'] = current_id_offset + questions.index(q) + 1
 
-                print(f"✅ Valid MCQ JSON generated: {question_count} questions")
-                logging.info(f"✅ Valid MCQ JSON generated: {question_count} questions")
-                return json.dumps(data)
+                print(f"✅ Valid MCQ Chunk generated: {question_count} questions")
+                return questions
 
             except Exception as e:
                 last_error = str(e)
-                print(f"❌ Attempt {attempt + 1} failed: {e}")
-                logging.warning(f"Attempt {attempt + 1} failed: {e}")
+                print(f"❌ Chunk Attempt {attempt + 1} failed: {e}")
+                logging.warning(f"Chunk Attempt {attempt + 1} failed: {e}")
                 
                 # Don't retry on API key errors — they'll fail every time
                 if 'API_KEY_INVALID' in str(e) or 'API key not valid' in str(e):
