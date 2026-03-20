@@ -133,12 +133,17 @@ Tone: Professional, precise, and educational.
                     )
                 )
 
-                # Clean markdown fences if they slip through
+                # Clean markdown fences if they wrap the entire response
                 text = response.text.strip()
-                if "```json" in text:
-                    text = text.split("```json")[1].split("```")[0].strip()
-                elif "```" in text:
-                    text = text.split("```")[1].split("```")[0].strip()
+                if text.startswith("```json"):
+                    text = text[7:]
+                elif text.startswith("```"):
+                    text = text[3:]
+                
+                if text.endswith("```"):
+                    text = text[:-3]
+                    
+                text = text.strip()
 
                 # Parse and validate
                 if not text.startswith("{"):
