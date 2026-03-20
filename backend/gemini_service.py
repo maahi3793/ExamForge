@@ -79,7 +79,7 @@ Tone: Professional, precise, and educational.
         chunk_size = 15 # Max questions per API call to avoid JSON truncation
         
         chunks = []
-        remaining = total_question_count
+        remaining = question_count
         while remaining > 0:
             if remaining >= chunk_size:
                 chunks.append(chunk_size)
@@ -88,8 +88,8 @@ Tone: Professional, precise, and educational.
                 chunks.append(remaining)
                 remaining = 0
 
-        logging.info(f"Generating {total_question_count} MCQs in {len(chunks)} chunks: {chunks}")
-        print(f"🎯 Generating {total_question_count} MCQs in {len(chunks)} chunks...")
+        logging.info(f"Generating {question_count} MCQs in {len(chunks)} chunks: {chunks}")
+        print(f"🎯 Generating {question_count} MCQs in {len(chunks)} chunks...")
         
         for i, count in enumerate(chunks):
             print(f"\n⏳ Processing Chunk {i+1}/{len(chunks)} ({count} questions)...")
@@ -100,8 +100,8 @@ Tone: Professional, precise, and educational.
         final_json = {
             "questions": all_questions
         }
-        print(f"✅ All {total_question_count} MCQs generated successfully.")
-        logging.info(f"✅ All {total_question_count} MCQs generated successfully.")
+        print(f"✅ All {question_count} MCQs generated successfully.")
+        logging.info(f"✅ All {question_count} MCQs generated successfully.")
         return json.dumps(final_json)
 
     def _generate_mcq_chunk(self, topics_str: str, question_count: int, current_id_offset: int) -> list:
